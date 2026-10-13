@@ -227,7 +227,6 @@ class ObservationListModel(QAbstractListModel):
             self.StatusRole: item.status.value,
             self.ScreenshotPathRole: item.screenshot_path,
             self.ScreenshotUrlRole: (
-                from PySide6.QtGui import QGuiApplication
                 QUrl.fromLocalFile(item.screenshot_path).toString() if item.screenshot_path else ''
             ),
             self.ProjectRole: item.project,
