@@ -12,7 +12,6 @@ from urllib.parse import quote, urlencode, urlparse
 import keyring
 from keyring.errors import KeyringError
 from PySide6.QtCore import QByteArray, QObject, QSettings, QTimer, QUrl, Signal, Slot
-from PySide6.QtGui import QDesktopServices, QGuiApplication
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtCore import Property
 
@@ -347,11 +346,15 @@ class GitHubAuthController(QObject):
     @Slot()
     def openGitHubAppCreation(self) -> None:  # noqa: N802
         """Open GitHub's new-app form used by the in-app setup guide."""
+        from PySide6.QtGui import QDesktopServices
+
         QDesktopServices.openUrl(QUrl(GITHUB_APP_CREATION_URL))
 
     @Slot()
     def openGitHubAppSettings(self) -> None:  # noqa: N802
         """Open the owner's GitHub Apps page to manage repository access."""
+        from PySide6.QtGui import QDesktopServices
+
         QDesktopServices.openUrl(QUrl(GITHUB_APP_SETTINGS_URL))
 
     @Slot('QStringList')
@@ -788,12 +791,16 @@ class GitHubAuthController(QObject):
     def openVerificationPage(self) -> None:  # noqa: N802
         """Open GitHub's trusted device-verification page in the default browser."""
         if self._verification_uri:
+            from PySide6.QtGui import QDesktopServices
+
             QDesktopServices.openUrl(QUrl(self._verification_uri))
 
     @Slot()
     def copyUserCode(self) -> None:  # noqa: N802
         """Copy the device code to the system clipboard."""
         if self._user_code:
+            from PySide6.QtGui import QGuiApplication
+
             QGuiApplication.clipboard().setText(self._user_code)
 
     @Slot()

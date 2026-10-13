@@ -13,7 +13,6 @@ from PySide6.QtCore import (
     Signal,
     Slot,
 )
-from PySide6.QtGui import QGuiApplication
 
 from inspyred_dev.core.models import Observation, ObservationStatus, ObservationType, Priority
 from inspyred_dev.gui.projects import ALL_PROJECTS, ProjectContext
@@ -228,6 +227,7 @@ class ObservationListModel(QAbstractListModel):
             self.StatusRole: item.status.value,
             self.ScreenshotPathRole: item.screenshot_path,
             self.ScreenshotUrlRole: (
+                from PySide6.QtGui import QGuiApplication
                 QUrl.fromLocalFile(item.screenshot_path).toString() if item.screenshot_path else ''
             ),
             self.ProjectRole: item.project,
@@ -530,6 +530,8 @@ class ObservationListModel(QAbstractListModel):
     def copyText(self, value: str) -> None:  # noqa: N802
         """Copy generated text to the operating-system clipboard."""
         if value:
+            from PySide6.QtGui import QGuiApplication
+
             QGuiApplication.clipboard().setText(value)
 
     @Slot(str, str, str, str, str, str, result=bool)
@@ -594,7 +596,7 @@ class ObservationListModel(QAbstractListModel):
         return True
 
     @Slot(int, int, str)
-    def linkGithubIssue(  # noqa: N802
+    def linkGithubIssue(
         self,
         observation_id: int,
         issue_number: int,

@@ -8,13 +8,16 @@ import sys
 from ctypes import wintypes
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from platformdirs import user_data_dir
 from PySide6.QtCore import QPoint, Property, QAbstractNativeEventFilter, QObject, QUrl, Signal, Slot
-from PySide6.QtGui import QGuiApplication
 
 from inspyred_dev.gui.settings import AppSettings
+
+if TYPE_CHECKING:
+    from PySide6.QtGui import QGuiApplication
 
 
 WM_HOTKEY = 0x0312
@@ -23,6 +26,7 @@ MOD_SHIFT = 0x0004
 MOD_NOREPEAT = 0x4000
 VK_N = 0x4E
 HOTKEY_ID = 0x1D51
+
 
 
 def _discard_managed_screenshot(screenshot_path: str, capture_dir: Path) -> None:
@@ -86,7 +90,7 @@ class QuickCaptureController(QObject):
     hotkeyRegisteredChanged = Signal()
     lastErrorChanged = Signal()
 
-    def __init__(self, app: QGuiApplication, settings: AppSettings) -> None:
+    def __init__(self, app: 'QGuiApplication', settings: AppSettings) -> None:
         """Register capture behavior with the application.
 
         Parameters
@@ -163,6 +167,8 @@ class QuickCaptureController(QObject):
     def _capture_active_window(self) -> tuple[str, str]:
         if sys.platform != 'win32':
             return '', ''
+
+        from PySide6.QtGui import QGuiApplication
 
         hwnd = ctypes.windll.user32.GetForegroundWindow()
         if not hwnd:
