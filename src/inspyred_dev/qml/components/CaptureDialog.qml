@@ -120,10 +120,11 @@ Popup {
             }
         }
 
-        Rectangle {
+        GlowLine {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
-            color: Theme.border
+            lineColor: Theme.borderStrong
+            strength: 0.5
         }
 
         ScrollView {
@@ -313,10 +314,11 @@ Popup {
             }
         }
 
-        Rectangle {
+        GlowLine {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
-            color: Theme.border
+            lineColor: Theme.borderStrong
+            strength: 0.5
         }
 
         RowLayout {

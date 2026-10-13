@@ -7,6 +7,8 @@ ApplicationWindow {
     id: window
 
     readonly property bool wideNavigation: AppSettings.labelsEnabled && width >= 900
+    property int pendingDeleteObservationId: 0
+    property string pendingDeleteObservationTitle: ''
 
     flags: Qt.Window | Qt.FramelessWindowHint
     visible: true
@@ -21,6 +23,8 @@ ApplicationWindow {
 
     onClosing: function(close) {
         settingsWindow.close()
+        aboutWindow.close()
+        pluginManagerWindow.close()
         if (SystemTray.handleWindowClose())
             close.accepted = false
     }
@@ -37,8 +41,49 @@ ApplicationWindow {
         id: addProjectDialog
     }
 
+    BatchIssueDialog {
+        id: batchIssueDialog
+    }
+
+    AIInstructionDialog {
+        id: aiInstructionDialog
+    }
+
+    Dialog {
+        id: deleteObservationDialog
+        title: 'Delete note?'
+        anchors.centerIn: parent
+        modal: true
+        standardButtons: Dialog.Yes | Dialog.Cancel
+
+        onAccepted: {
+            Observations.deleteObservation(window.pendingDeleteObservationId)
+            window.pendingDeleteObservationId = 0
+            window.pendingDeleteObservationTitle = ''
+        }
+
+        Text {
+            width: 360
+            text: '“' + window.pendingDeleteObservationTitle
+                + '” will be permanently deleted. This cannot be undone.'
+            color: Theme.textSecondary
+            wrapMode: Text.Wrap
+        }
+    }
+
     SettingsWindow {
         id: settingsWindow
+        targetWindow: window
+        pluginManagerWindow: pluginManagerWindow
+    }
+
+    PluginManagerWindow {
+        id: pluginManagerWindow
+        targetWindow: settingsWindow
+    }
+
+    AboutWindow {
+        id: aboutWindow
         targetWindow: window
     }
 
@@ -208,7 +253,24 @@ ApplicationWindow {
                     helpId: 'inbox'
                     forceLabel: false
                     iconOnly: !window.wideNavigation
-                    selected: true
+                    suppressLabel: !window.wideNavigation
+                    bounceOnHover: true
+                    hoverGlowColor: Theme.cyan
+                    selected: !Observations.showingShelved
+                    onClicked: Observations.setViewStatus('Inbox')
+                }
+
+                InspyredButton {
+                    Layout.fillWidth: true
+                    iconName: 'archive'
+                    text: 'Shelved'
+                    iconOnly: !window.wideNavigation
+                    suppressLabel: !window.wideNavigation
+                    bounceOnHover: true
+                    hoverGlowColor: Theme.violet
+                    selected: Observations.showingShelved
+                    tooltip: 'Show notes set aside for later'
+                    onClicked: Observations.setViewStatus('Shelved')
                 }
 
                 InspyredButton {
@@ -216,6 +278,9 @@ ApplicationWindow {
                     iconName: 'layers'
                     text: 'Ready'
                     iconOnly: !window.wideNavigation
+                    suppressLabel: !window.wideNavigation
+                    bounceOnHover: true
+                    hoverGlowColor: Theme.success
                     tooltip: 'Show observations that are ready to implement'
                     enabled: false
                 }
@@ -225,6 +290,9 @@ ApplicationWindow {
                     iconName: 'progress'
                     text: 'In Progress'
                     iconOnly: !window.wideNavigation
+                    suppressLabel: !window.wideNavigation
+                    bounceOnHover: true
+                    hoverGlowColor: Theme.accentHover
                     tooltip: 'Show work currently being implemented'
                     enabled: false
                 }
@@ -234,19 +302,23 @@ ApplicationWindow {
                     iconName: 'verify'
                     text: 'Verify'
                     iconOnly: !window.wideNavigation
+                    suppressLabel: !window.wideNavigation
+                    bounceOnHover: true
+                    hoverGlowColor: Theme.violet
                     tooltip: 'Show completed work waiting for verification'
                     enabled: false
                 }
 
                 Item { Layout.fillHeight: true }
 
-                Rectangle {
+                GlowLine {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 1
                     Layout.leftMargin: 8
                     Layout.rightMargin: 8
                     Layout.bottomMargin: 4
-                    color: Theme.border
+                    lineColor: Theme.borderStrong
+                    strength: 0.55
                 }
 
                 InspyredButton {
@@ -254,17 +326,33 @@ ApplicationWindow {
                     iconName: 'settings'
                     text: 'Settings'
                     iconOnly: !window.wideNavigation
+                    suppressLabel: !window.wideNavigation
+                    bounceOnHover: true
+                    hoverGlowColor: Theme.cyan
                     tooltip: 'Change appearance and quick-capture preferences'
                     onClicked: settingsWindow.showSettings()
+                }
+
+                InspyredButton {
+                    Layout.fillWidth: true
+                    iconName: 'info'
+                    text: 'About'
+                    iconOnly: !window.wideNavigation
+                    suppressLabel: !window.wideNavigation
+                    bounceOnHover: true
+                    hoverGlowColor: Theme.violet
+                    tooltip: 'About Inspyred Dev'
+                    onClicked: aboutWindow.showAbout()
                 }
             }
         }
 
-        Rectangle {
+        GlowLine {
             Layout.preferredWidth: 1
             Layout.fillHeight: true
-            color: Theme.borderStrong
-            opacity: 0.55
+            vertical: true
+            lineColor: Theme.borderStrong
+            strength: 0.65
         }
 
         ColumnLayout {
@@ -286,14 +374,16 @@ ApplicationWindow {
                     spacing: 2
 
                     Text {
-                        text: 'Inbox'
+                        text: Observations.showingShelved ? 'Shelved' : 'Inbox'
                         color: Theme.textPrimary
                         font.pixelSize: 32
                         font.weight: Font.Bold
                     }
 
                     Text {
-                        text: 'Captured observations, ideas, and improvements from your development flow.'
+                        text: Observations.showingShelved
+                            ? 'Notes set aside for later.'
+                            : 'Captured observations, ideas, and improvements from your development flow.'
                         color: Theme.textSecondary
                         font.pixelSize: 14
                         visible: window.width >= 930
@@ -301,6 +391,16 @@ ApplicationWindow {
                 }
 
                 InspyredButton {
+                    visible: Projects.activeProjectSource === 'github'
+                        && Projects.activeProjectLocation.length > 0
+                    text: 'View on GitHub'
+                    iconName: 'github'
+                    tooltip: 'Open this project repository on GitHub'
+                    onClicked: Qt.openUrlExternally(Projects.activeProjectLocation)
+                }
+
+                InspyredButton {
+                    visible: !Observations.showingShelved
                     text: 'Capture'
                     iconName: 'add'
                     forceLabel: true
@@ -311,11 +411,11 @@ ApplicationWindow {
                 }
             }
 
-            Rectangle {
+            GlowLine {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1
-                color: Theme.borderStrong
-                opacity: 0.45
+                lineColor: Theme.borderStrong
+                strength: 0.55
             }
 
             Item {
@@ -336,17 +436,103 @@ ApplicationWindow {
 
                         Text {
                             text: Observations.count === 1
-                                ? '1 observation'
-                                : Observations.count + ' observations'
+                                ? (Observations.showingShelved ? '1 shelved note' : '1 observation')
+                                : Observations.count
+                                    + (Observations.showingShelved
+                                        ? ' shelved notes'
+                                        : ' observations')
                             color: Theme.textSecondary
                             font.pixelSize: 13
                             Layout.fillWidth: true
+                        }
+
+                        InspyredButton {
+                            visible: Observations.count > 0
+                                && Projects.activeProject !== 'All projects'
+                            text: Observations.selectedCount === Observations.count
+                                ? 'Clear selection'
+                                : 'Select all'
+                            forceLabel: true
+                            compact: true
+                            enabled: GitHubAuth.issueCreationObservationId === 0
+                            tooltip: Observations.selectedCount === Observations.count
+                                ? 'Clear the current selection'
+                                : 'Select every note in this project'
+                            onClicked: {
+                                if (Observations.selectedCount === Observations.count)
+                                    Observations.clearSelection()
+                                else
+                                    Observations.selectAll()
+                            }
                         }
 
                         Text {
                             text: 'Local inbox'
                             color: Theme.textSecondary
                             font.pixelSize: 12
+                        }
+                    }
+
+                    Rectangle {
+                        visible: Observations.selectedCount > 0
+                        Layout.fillWidth: true
+                        implicitHeight: visible ? batchSelectionLayout.implicitHeight + 20 : 0
+                        radius: 11
+                        color: Theme.surfaceAlt
+                        border.color: Theme.borderStrong
+
+                        RowLayout {
+                            id: batchSelectionLayout
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            spacing: 10
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: GitHubAuth.issueCreationObservationId > 0
+                                    ? 'Creating issue '
+                                        + (GitHubAuth.issueBatchCompleted + 1)
+                                        + ' of ' + GitHubAuth.issueBatchTotal
+                                    : Observations.selectedCount + ' note(s) selected'
+                                color: Theme.textPrimary
+                                font.pixelSize: 13
+                                font.weight: Font.DemiBold
+                                elide: Text.ElideRight
+                            }
+
+                            InspyredButton {
+                                text: 'Clear'
+                                forceLabel: true
+                                compact: true
+                                enabled: GitHubAuth.issueCreationObservationId === 0
+                                onClicked: Observations.clearSelection()
+                            }
+
+                            InspyredButton {
+                                text: 'AI instructions…'
+                                forceLabel: true
+                                compact: true
+                                enabled: GitHubAuth.issueCreationObservationId === 0
+                                tooltip: 'Build coding instructions from the selected notes'
+                                onClicked: aiInstructionDialog.openForSelection()
+                            }
+
+                            InspyredButton {
+                                text: 'Create GitHub issues…'
+                                visible: Observations.selectedRepositoryCount > 0
+                                forceLabel: true
+                                compact: true
+                                accent: true
+                                enabled: Observations.selectedGithubIssueEligible
+                                    && GitHubAuth.signedIn
+                                    && GitHubAuth.issueCreationObservationId === 0
+                                tooltip: !Observations.selectedGithubIssueEligible
+                                    ? Observations.githubIssueSelectionError
+                                    : (GitHubAuth.signedIn
+                                        ? 'Choose how selected notes become issues'
+                                        : 'Sign in with GitHub in Settings first')
+                                onClicked: batchIssueDialog.openForSelection()
+                            }
                         }
                     }
 
@@ -359,6 +545,8 @@ ApplicationWindow {
                         model: Observations
 
                         delegate: Rectangle {
+                            id: observationCard
+                            required property int observationId
                             required property string title
                             required property string details
                             required property string kind
@@ -369,6 +557,9 @@ ApplicationWindow {
                             required property string createdAt
                             required property string screenshotPath
                             required property string screenshotUrl
+                            required property int githubIssueNumber
+                            required property string githubIssueUrl
+                            required property bool selected
 
                             width: ListView.view.width
                             implicitHeight: cardLayout.implicitHeight + 32
@@ -387,6 +578,7 @@ ApplicationWindow {
                                     return Theme.cyan
                                 return Theme.accentHover
                             }
+                            readonly property string githubRepositoryUrl: Projects.githubRepositoryUrl(project)
 
                             Behavior on color {
                                 ColorAnimation { duration: 100 }
@@ -421,6 +613,21 @@ ApplicationWindow {
                                 RowLayout {
                                     Layout.fillWidth: true
 
+                                    InspyredButton {
+                                        iconName: selected ? 'verify' : 'select'
+                                        iconOnly: true
+                                        text: selected ? 'Selected' : 'Select'
+                                        compact: true
+                                        selected: observationCard.selected
+                                        enabled: selected
+                                            || Observations.selectedProjectName.length === 0
+                                            || Observations.selectedProjectName === project
+                                        tooltip: enabled
+                                            ? (selected ? 'Remove from selection' : 'Select for batch actions')
+                                            : 'The current selection belongs to another project'
+                                        onClicked: Observations.toggleSelection(observationId)
+                                    }
+
                                     Text {
                                         Layout.fillWidth: true
                                         text: title
@@ -435,6 +642,8 @@ ApplicationWindow {
                                         color: Theme.textSecondary
                                         font.pixelSize: 12
                                         Layout.alignment: Qt.AlignTop
+                                        Layout.maximumWidth: 180
+                                        elide: Text.ElideRight
                                     }
                                 }
 
@@ -520,8 +729,118 @@ ApplicationWindow {
                                         text: project
                                         color: Theme.textSecondary
                                         font.pixelSize: 12
+                                        elide: Text.ElideRight
+                                        Layout.maximumWidth: 220
+                                    }
+                                }
+
+                                Flow {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: childrenRect.height
+                                    spacing: 8
+
+                                    InspyredButton {
+                                        visible: githubIssueUrl.length > 0
+                                        text: '#' + githubIssueNumber
+                                        forceLabel: true
+                                        compact: true
+                                        accent: true
+                                        tooltip: 'Open this issue on GitHub'
+                                        onClicked: Qt.openUrlExternally(githubIssueUrl)
                                     }
 
+                                    InspyredButton {
+                                        visible: githubIssueUrl.length === 0
+                                            && githubRepositoryUrl.length > 0
+                                        text: GitHubAuth.issueCreationObservationId === observationId
+                                            ? 'Creating…'
+                                            : 'Create issue'
+                                        forceLabel: true
+                                        compact: true
+                                        enabled: GitHubAuth.signedIn
+                                            && GitHubAuth.issueCreationObservationId === 0
+                                        tooltip: GitHubAuth.signedIn
+                                            ? 'Create a GitHub issue from this observation'
+                                            : 'Sign in with GitHub in Settings first'
+                                        onClicked: GitHubAuth.createIssue(
+                                            observationId,
+                                            githubRepositoryUrl,
+                                            title,
+                                            details,
+                                            kind,
+                                            priority,
+                                            area
+                                        )
+                                    }
+
+                                    InspyredButton {
+                                        text: 'AI instruction'
+                                        forceLabel: true
+                                        compact: true
+                                        tooltip: 'Build a coding instruction from this note'
+                                        onClicked: aiInstructionDialog.openForObservation(observationId)
+                                    }
+
+                                    InspyredButton {
+                                        iconName: 'arrow-up'
+                                        iconOnly: true
+                                        text: 'Increase priority'
+                                        compact: true
+                                        enabled: priority !== 'P1'
+                                        tooltip: enabled
+                                            ? 'Increase priority (' + priority + ' → P'
+                                                + (Number(priority.slice(1)) - 1) + ')'
+                                            : 'Already at highest priority'
+                                        onClicked: Observations.increasePriority(observationId)
+                                    }
+
+                                    InspyredButton {
+                                        iconName: 'arrow-down'
+                                        iconOnly: true
+                                        text: 'Decrease priority'
+                                        compact: true
+                                        enabled: priority !== 'P3'
+                                        tooltip: enabled
+                                            ? 'Decrease priority (' + priority + ' → P'
+                                                + (Number(priority.slice(1)) + 1) + ')'
+                                            : 'Already at lowest priority'
+                                        onClicked: Observations.decreasePriority(observationId)
+                                    }
+
+                                    InspyredButton {
+                                        iconName: 'archive'
+                                        text: status === 'Shelved' ? 'Restore' : 'Shelve'
+                                        forceLabel: true
+                                        compact: true
+                                        tooltip: status === 'Shelved'
+                                            ? 'Return this note to the inbox'
+                                            : 'Set this note aside for later'
+                                        onClicked: Observations.toggleShelved(observationId)
+                                    }
+
+                                    InspyredButton {
+                                        iconName: 'trash'
+                                        iconOnly: true
+                                        text: 'Delete'
+                                        compact: true
+                                        tooltip: 'Permanently delete this note'
+                                        onClicked: {
+                                            window.pendingDeleteObservationId = observationId
+                                            window.pendingDeleteObservationTitle = title
+                                            deleteObservationDialog.open()
+                                        }
+                                    }
+
+                                }
+
+                                Text {
+                                    visible: GitHubAuth.issueCreationErrorObservationId === observationId
+                                        && GitHubAuth.issueCreationError.length > 0
+                                    Layout.fillWidth: true
+                                    text: GitHubAuth.issueCreationError
+                                    color: Theme.danger
+                                    font.pixelSize: 12
+                                    wrapMode: Text.Wrap
                                 }
                             }
                         }
@@ -546,7 +865,9 @@ ApplicationWindow {
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: 'Nothing rattling around in your head yet.'
+                        text: Observations.showingShelved
+                            ? 'No shelved notes.'
+                            : 'Nothing rattling around in your head yet.'
                         color: Theme.textPrimary
                         font.pixelSize: 17
                         font.weight: Font.DemiBold
@@ -554,12 +875,15 @@ ApplicationWindow {
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: 'Capture an observation the moment you notice it.'
+                        text: Observations.showingShelved
+                            ? 'Notes you set aside will appear here.'
+                            : 'Capture an observation the moment you notice it.'
                         color: Theme.textSecondary
                         font.pixelSize: 13
                     }
 
                     InspyredButton {
+                        visible: !Observations.showingShelved
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: 'Capture first observation'
                         iconName: 'add'
@@ -571,11 +895,11 @@ ApplicationWindow {
                 }
             }
 
-            Rectangle {
+            GlowLine {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1
-                color: Theme.borderStrong
-                opacity: 0.45
+                lineColor: Theme.borderStrong
+                strength: 0.55
             }
 
             RowLayout {
@@ -609,10 +933,22 @@ ApplicationWindow {
                 InspyredButton {
                     iconName: 'add'
                     iconOnly: true
+                    text: 'Add project'
                     compact: true
                     tooltip: 'Add project'
                     helpId: 'add-project'
                     onClicked: addProjectDialog.openForNewProject()
+                }
+
+                InspyredButton {
+                    visible: Projects.activeProject !== 'All projects'
+                    iconName: 'edit'
+                    iconOnly: true
+                    text: 'Edit project'
+                    compact: true
+                    tooltip: 'Edit current project'
+                    helpId: 'edit-project'
+                    onClicked: addProjectDialog.openForEditProject()
                 }
             }
         }

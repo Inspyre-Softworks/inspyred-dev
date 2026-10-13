@@ -78,13 +78,13 @@ Rectangle {
         }
     }
 
-    Rectangle {
+    GlowLine {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         height: 1
-        color: Theme.borderStrong
-        opacity: 0.75
+        lineColor: Theme.borderStrong
+        strength: 0.9
     }
 
     MouseArea {

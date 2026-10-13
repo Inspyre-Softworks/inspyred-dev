@@ -27,14 +27,24 @@ TextField {
     Accessible.name: placeholderText
     Accessible.description: resolvedHelp
 
-    background: Rectangle {
-        radius: 11
-        color: root.activeFocus ? Theme.surfaceRaised : Theme.surface
-        border.width: root.activeFocus ? 2 : 1
-        border.color: root.activeFocus ? Theme.cyan : Theme.border
+    background: Item {
+        GlowFrame {
+            anchors.fill: parent
+            radius: 11
+            glowColor: root.activeFocus ? Theme.cyan : Theme.glow
+            strength: root.activeFocus || root.hovered ? 1.0 : 0.72
+        }
 
-        Behavior on border.color {
-            ColorAnimation { duration: 100 }
+        Rectangle {
+            anchors.fill: parent
+            radius: 11
+            color: root.activeFocus ? Theme.surfaceRaised : Theme.surface
+            border.width: root.activeFocus ? 2 : 1
+            border.color: root.activeFocus ? Theme.cyan : Theme.border
+
+            Behavior on border.color {
+                ColorAnimation { duration: 100 }
+            }
         }
     }
 

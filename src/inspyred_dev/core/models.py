@@ -39,6 +39,7 @@ class ObservationStatus(StrEnum):
     IN_PROGRESS = 'In Progress'
     VERIFY = 'Verify'
     DONE = 'Done'
+    SHELVED = 'Shelved'
 
 
 class Observation(BaseModel):
@@ -76,5 +77,7 @@ class Observation(BaseModel):
     area: str = ''
     project: str = 'Inspyred Dev'
     screenshot_path: str = ''
+    github_issue_number: int = 0
+    github_issue_url: str = ''
     status: ObservationStatus = ObservationStatus.INBOX
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

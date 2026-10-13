@@ -7,6 +7,7 @@ ComboBox {
     property string helpId: ''
     property string helpText: ''
     property string tooltip: ''
+    property real popupMaximumHeight: 280
 
     readonly property string resolvedHelp: helpText.length > 0
         ? helpText
@@ -41,11 +42,21 @@ ComboBox {
         font.pixelSize: 18
     }
 
-    background: Rectangle {
-        radius: 11
-        color: root.hovered ? Theme.surfaceAlt : Theme.surface
-        border.width: root.activeFocus ? 2 : 1
-        border.color: root.activeFocus ? Theme.cyan : Theme.border
+    background: Item {
+        GlowFrame {
+            anchors.fill: parent
+            radius: 11
+            glowColor: root.activeFocus ? Theme.cyan : Theme.glow
+            strength: root.activeFocus || root.hovered ? 1.0 : 0.72
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: 11
+            color: root.hovered ? Theme.surfaceAlt : Theme.surface
+            border.width: root.activeFocus ? 2 : 1
+            border.color: root.activeFocus ? Theme.cyan : Theme.border
+        }
     }
 
     delegate: ItemDelegate {
@@ -73,12 +84,22 @@ ComboBox {
         width: root.width
         implicitHeight: contentItem.implicitHeight + 12
         padding: 6
+        onOpened: {
+            if (root.currentIndex >= 0)
+                contentItem.positionViewAtIndex(root.currentIndex, ListView.Contain)
+        }
 
         contentItem: ListView {
             clip: true
-            implicitHeight: contentHeight
+            implicitHeight: Math.min(contentHeight, root.popupMaximumHeight)
             model: root.popup.visible ? root.delegateModel : null
             currentIndex: root.highlightedIndex
+
+            ScrollBar.vertical: ScrollBar {
+                policy: parent.contentHeight > parent.height
+                    ? ScrollBar.AlwaysOn
+                    : ScrollBar.AsNeeded
+            }
         }
 
         background: Rectangle {

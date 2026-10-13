@@ -80,3 +80,83 @@ def test_invalid_gui_client_id_is_not_saved(tmp_path, monkeypatch) -> None:
     assert not controller.configured
     assert settings.value(CLIENT_ID_SETTING) is None
     assert 'Client ID' in controller.errorMessage
+
+
+def test_repository_options_exclude_existing_projects() -> None:
+    """Only offer valid GitHub repositories that are not already projects."""
+    payload = [
+        {
+            'full_name': 'Inspyre-Softworks/inspyred-dev',
+            'html_url': 'https://github.com/Inspyre-Softworks/inspyred-dev',
+            'id': 12345678901,
+            'default_branch': 'main',
+        },
+        {
+            'full_name': 'Inspyre-Softworks/website',
+            'html_url': 'https://github.com/Inspyre-Softworks/website',
+        },
+        {'full_name': '', 'html_url': 'https://github.com/broken/repository'},
+    ]
+
+    repositories = GitHubAuthController._repository_options(
+        payload,
+        {'https://github.com/inspyre-softworks/website'},
+    )
+
+    assert repositories == [
+        {
+            'full_name': 'Inspyre-Softworks/inspyred-dev',
+            'url': 'https://github.com/Inspyre-Softworks/inspyred-dev',
+            'id': 12345678901,
+            'default_branch': 'main',
+        }
+    ]
+
+
+def test_issue_body_contains_observation_context() -> None:
+    """Format captured context and triage metadata as GitHub Markdown."""
+    body = GitHubAuthController.format_issue_body(
+        'The dialog clips on small screens.',
+        'Bug',
+        'P1',
+        'Add project',
+    )
+
+    assert body.startswith('The dialog clips on small screens.')
+    assert '- **Type:** Bug' in body
+    assert '- **Priority:** P1' in body
+    assert '- **Area:** Add project' in body
+
+
+def test_create_issue_targets_project_repository(monkeypatch) -> None:
+    """Send the observation to the selected project's issue endpoint."""
+    controller = GitHubAuthController(client_id='Iv1abcdef0123456789')
+    controller._status = 'signed_in'
+    controller._token = OAuthToken('access-token')
+    request: dict[str, object] = {}
+
+    def capture(url, payload, callback) -> None:
+        request.update(url=url, payload=payload, callback=callback)
+
+    monkeypatch.setattr(controller, '_authenticated_post_json', capture)
+
+    controller.createIssue(
+        17,
+        'https://github.com/Inspyre-Softworks/inspyred-dev',
+        'Create GitHub issue',
+        'Publish the observation.',
+        'Feature',
+        'P2',
+        'Inbox',
+    )
+
+    assert request['url'] == (
+        'https://api.github.com/repos/Inspyre-Softworks/inspyred-dev/issues'
+    )
+    assert request['payload'] == {
+        'title': 'Create GitHub issue',
+        'body': GitHubAuthController.format_issue_body(
+            'Publish the observation.', 'Feature', 'P2', 'Inbox'
+        ),
+    }
+    assert controller.issueCreationObservationId == 17
